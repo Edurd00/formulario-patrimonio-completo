@@ -1,0 +1,70 @@
+# GUIA DE MIGRAÇÃO: GOOGLE APPS SCRIPT PARA PROXY (API EXPRESS)
+
+Para migrar o sistema atual sem quebrar o fluxo do frontend legado, siga os passos abaixo no seu projeto do Google Apps Script.
+
+## 1. Atualizar o `doPost(e)`
+O Apps Script deixará de salvar no Google Sheets e passará a encaminhar os dados para o novo servidor Express (Neon.tech).
+
+```javascript
+function doPost(e) {
+  var api_url = "SUA_URL_DO_RAILWAY_OU_RENDER/api/cadastro";
+
+  try {
+    var data = JSON.parse(e.postData.contents);
+
+    var options = {
+      'method' : 'post',
+      'contentType': 'application/json',
+      'payload' : JSON.stringify(data),
+      'muteHttpExceptions': true
+    };
+
+    var response = UrlFetchApp.fetch(api_url, options);
+    var result = response.getContentText();
+
+    return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      sucesso: false,
+      mensagem: "Erro no Proxy Apps Script: " + err.message
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+```
+
+## 2. Tabelas Necessárias no PostgreSQL (Neon.tech)
+Certifique-se de executar este SQL no console do Neon antes de iniciar a migração:
+
+```sql
+CREATE TABLE igrejas (
+    totvs VARCHAR(10) PRIMARY KEY,
+    regiao TEXT,
+    estadual TEXT,
+    dirigente TEXT,
+    telefone TEXT,
+    endereco TEXT,
+    cep VARCHAR(10),
+    data_cadastro TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE patrimonios (
+    id SERIAL PRIMARY KEY,
+    igreja_totvs VARCHAR(10) REFERENCES igrejas(totvs),
+    item_id TEXT,
+    nome_extra TEXT,
+    possui VARCHAR(5),
+    quantidade INT,
+    estado TEXT,
+    observacao TEXT
+);
+```
+
+## 3. Variáveis de Ambiente
+No seu servidor Express, configure:
+`DATABASE_URL=postgres://user:pass@host/db?sslmode=require`
+
+## 4. Benefícios
+- O frontend não precisa ser alterado (continua enviando para o Apps Script).
+- O Apps Script serve como um "túnel" seguro.
+- Os dados agora ficam centralizados em um banco de dados profissional.

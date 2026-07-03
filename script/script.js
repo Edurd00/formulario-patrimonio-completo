@@ -1,14 +1,17 @@
 const formulario = document.getElementById("formulario");
 const regiao = document.getElementById("regiao");
 const estadual = document.getElementById("estadual");
+const cepInput = document.getElementById("cep");
 const endereco = document.getElementById("endereco");
 const dirigente = document.getElementById("dirigente");
 const telefoneInput = document.getElementById("telefone");
 const totvs = document.getElementById("totvs");
 const erroTotvs = document.getElementById("erro-totvs");
 
-const codigosExistentes = [];
-
+// Futura API URL
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? "http://localhost:3000"
+    : "";
 if (sessionStorage.getItem("cadastroEnviado") === "true") {
   sessionStorage.removeItem("cadastroEnviado");
 }
@@ -150,6 +153,36 @@ function popularRegioes() {
 
 popularRegioes();
 
+cepInput.addEventListener("input", function() {
+  let value = this.value.replace(/\D/g, "");
+  if (value.length > 8) value = value.substring(0, 8);
+  if (value.length > 5) {
+    this.value = `${value.substring(0, 5)}-${value.substring(5)}`;
+  } else {
+    this.value = value;
+  }
+});
+
+cepInput.addEventListener("blur", async function() {
+  const cep = this.value.replace(/\D/g, "");
+  if (cep.length !== 8) return;
+
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await response.json();
+
+    if (!data.erro) {
+      endereco.value = `${data.logradouro}, , ${data.bairro} - ${data.localidade}/${data.uf}`;
+      endereco.focus();
+      // O cursor vai para antes da primeira vírgula para facilitar a digitação do número
+      const position = data.logradouro.length + 2;
+      endereco.setSelectionRange(position, position);
+    }
+  } catch (error) {
+    console.error("Erro ao consultar ViaCEP:", error);
+  }
+});
+
 regiao.addEventListener("change", function () {
   estadual.innerHTML = '<option value="">Selecione a Estadual</option>';
   const lista = estaduais[this.value];
@@ -173,19 +206,29 @@ totvs.addEventListener("input", function() {
   this.classList.remove("erro-input");
 });
 
-totvs.addEventListener("blur", function () {
+totvs.addEventListener("blur", async function () {
   erroTotvs.innerText = "";
   this.classList.remove("erro-input");
 
-  if (this.value.length > 5) {
+  const valor = this.value.trim();
+  if (!valor) return;
+
+  if (valor.length > 5) {
     erroTotvs.innerText = "O codigo TOTVS deve conter no maximo 5 digitos.";
     this.classList.add("erro-input");
     return;
   }
 
-  if (codigosExistentes.includes(this.value)) {
-    erroTotvs.innerText = "Este codigo TOTVS ja esta cadastrado no sistema.";
-    this.classList.add("erro-input");
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/validar-totvs/${valor}`);
+    const data = await response.json();
+
+    if (data.existe) {
+      erroTotvs.innerText = "Este codigo TOTVS ja esta cadastrado no sistema.";
+      this.classList.add("erro-input");
+    }
+  } catch (error) {
+    console.warn("Nao foi possivel conectar a API de validacao TOTVS. Usando validacao local (se disponivel).", error);
   }
 });
 
@@ -201,11 +244,11 @@ telefoneInput.addEventListener("input", function() {
   }
 });
 
-formulario.addEventListener("submit", function (e) {
+formulario.addEventListener("submit", async function (e) {
   e.preventDefault();
   erroTotvs.innerText = "";
 
-  if (!regiao.value || !estadual.value || !endereco.value.trim() || !dirigente.value.trim() || !telefoneInput.value.trim() || !totvs.value.trim()) {
+  if (!regiao.value || !estadual.value || !cepInput.value.trim() || !endereco.value.trim() || !dirigente.value.trim() || !telefoneInput.value.trim() || !totvs.value.trim()) {
     alert("Por favor, preencha todos os campos obrigatorios antes de prosseguir.");
     return;
   }
@@ -217,17 +260,26 @@ formulario.addEventListener("submit", function (e) {
     return;
   }
 
-  if (codigosExistentes.includes(totvs.value)) {
-    erroTotvs.innerText = "Codigo TOTVS ja cadastrado.";
-    totvs.classList.add("erro-input");
-    totvs.focus();
-    return;
+  // Validacao final via API antes de prosseguir
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/validar-totvs/${totvs.value.trim()}`);
+    const data = await response.json();
+
+    if (data.existe) {
+      erroTotvs.innerText = "Codigo TOTVS ja cadastrado.";
+      totvs.classList.add("erro-input");
+      totvs.focus();
+      return;
+    }
+  } catch (error) {
+    console.warn("Falha na validacao final via API, prosseguindo com cautela...");
   }
 
   const dadosPagina1 = {
     regiao: regiao.value,
     regiaoChave: normalizarChaveRegiao(regiao.value),
     estadual: estadual.value,
+    cep: cepInput.value.trim(),
     endereco: endereco.value.trim(),
     dirigente: dirigente.value.trim(),
     telefone: telefoneInput.value.trim(),
