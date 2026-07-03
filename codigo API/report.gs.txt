@@ -1,0 +1,269 @@
+function gerarRelatorioPorTotvs(totvs) {
+  const chave = normalizarTexto(totvs);
+
+  if (!chave) {
+    throw new Error("Informe o código TOTVS para gerar o relatório.");
+  }
+
+  const igreja = buscarIgrejaPorTotvs(chave);
+  const planilha = igreja.planilha;
+  const patrimonios = buscarPatrimoniosPorTotvs(chave, igreja.destino);
+  const aba = criarAbaTemporariaRelatorio(planilha, chave);
+
+  montarRelatorioVisual(aba, igreja, patrimonios);
+
+  return {
+    totvs: chave,
+    regiao: igreja.regiao,
+    planilhaId: planilha.getId(),
+    aba: aba.getName(),
+    gid: aba.getSheetId(),
+    url: planilha.getUrl() + "#gid=" + aba.getSheetId()
+  };
+}
+
+function exportarPdfRelatorio(totvs, removerAbaTemporaria) {
+  const relatorio = gerarRelatorioPorTotvs(totvs);
+  const planilha = SpreadsheetApp.openById(relatorio.planilhaId);
+  const aba = planilha.getSheetByName(relatorio.aba);
+
+  SpreadsheetApp.flush();
+
+  const url = montarUrlExportacaoPdf(planilha.getId(), aba.getSheetId());
+  const resposta = UrlFetchApp.fetch(url, {
+    headers: {
+      Authorization: "Bearer " + ScriptApp.getOAuthToken()
+    }
+  });
+
+  const nomeArquivo = "RELATORIO_PATRIMONIO_" + normalizarTexto(totvs) + ".pdf";
+  const pasta = obterPastaPdfRelatorio(relatorio.regiao);
+  const arquivo = pasta.createFile(resposta.getBlob().setName(nomeArquivo));
+
+  if (removerAbaTemporaria) {
+    planilha.deleteSheet(aba);
+  }
+
+  return {
+    totvs: normalizarTexto(totvs),
+    regiao: relatorio.regiao,
+    arquivo: arquivo.getName(),
+    url: arquivo.getUrl(),
+    pasta: pasta.getName(),
+    pastaUrl: pasta.getUrl()
+  };
+}
+
+function criarAbaTemporariaRelatorio(planilha, totvs) {
+  const nomeBase = CONFIG.PREFIXO_RELATORIO + limparNomeAba(totvs);
+  const existente = planilha.getSheetByName(nomeBase);
+
+  if (existente) {
+    planilha.deleteSheet(existente);
+  }
+
+  return planilha.insertSheet(nomeBase);
+}
+
+function montarRelatorioVisual(aba, igreja, patrimonios) {
+  configurarPaginaRelatorio(aba);
+  montarCabecalhoRelatorio(aba, igreja);
+  montarBlocoIgreja(aba, igreja);
+  montarTabelaRelatorio(aba, patrimonios);
+  montarRodapeRelatorio(aba);
+}
+
+function configurarPaginaRelatorio(aba) {
+  aba.setHiddenGridlines(true);
+  aba.setFrozenRows(0);
+  aba.setFrozenColumns(0);
+  aba.setColumnWidth(1, 26);
+  aba.setColumnWidth(2, 240);
+  aba.setColumnWidth(3, 90);
+  aba.setColumnWidth(4, 100);
+  aba.setColumnWidth(5, 120);
+  aba.setColumnWidth(6, 210);
+  aba.setColumnWidth(7, 26);
+  aba.getRange("A1:G90").setBackground(CONFIG.CORES.FUNDO).setFontFamily("Arial");
+}
+
+function montarCabecalhoRelatorio(aba, igreja) {
+  aba.setRowHeight(1, 14);
+  aba.setRowHeight(2, 38);
+  aba.setRowHeight(3, 38);
+
+  inserirLogoRelatorio(aba);
+
+  aba.getRange("C2:E3").merge().setValue(montarTituloRelatorio(igreja) + "\nRELATÓRIO CORPORATIVO")
+    .setBackground(CONFIG.CORES.PRIMARIA)
+    .setFontColor("#ffffff")
+    .setFontSize(17)
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
+}
+
+function montarTituloRelatorio(igreja) {
+  const regiao = igreja && igreja.regiao ? normalizarTexto(igreja.regiao) : "";
+  return "PATRIMÔNIOS IPDA" + (regiao ? " - " + regiao : "");
+}
+
+function inserirLogoRelatorio(aba) {
+  try {
+    if (CONFIG.LOGO_BASE64) {
+      const blob = Utilities.newBlob(
+        Utilities.base64Decode(CONFIG.LOGO_BASE64),
+        CONFIG.LOGO_MIME_TYPE,
+        "logo-relatorio.png"
+      );
+
+      aba.insertImage(blob, 2, 2).setWidth(130).setHeight(70);
+      return;
+    }
+
+    aba.insertImage(CONFIG.LOGO_URL, 2, 2).setWidth(130).setHeight(70);
+  } catch (erro) {
+    Logger.log("Não foi possível inserir a logo do relatório: " + erro);
+
+    aba.getRange("B2:B3").merge().setValue("IPDA")
+      .setBackground(CONFIG.CORES.PRIMARIA)
+      .setFontColor("#ffffff")
+      .setFontWeight("bold")
+      .setFontSize(18)
+      .setHorizontalAlignment("center")
+      .setVerticalAlignment("middle");
+  }
+}
+
+function montarBlocoIgreja(aba, igreja) {
+  aba.getRange("B5:E5").merge().setValue("DADOS DA IGREJA")
+    .setBackground(CONFIG.CORES.SECUNDARIA)
+    .setFontColor(CONFIG.CORES.PRIMARIA)
+    .setFontWeight("bold")
+    .setFontSize(13);
+
+  const dados = [
+    ["CÓDIGO TOTVS", igreja.totvs, "DATA CADASTRO", formatarData(igreja.dataCadastro)],
+    ["REGIÃO", igreja.regiao, "ESTADUAL", igreja.estadual],
+    ["DIRIGENTE", igreja.dirigente, "TELEFONE", igreja.telefone],
+    ["ENDEREÇO", igreja.endereco, "", ""]
+  ];
+
+  aba.getRange(6, 2, dados.length, 4).setValues(dados)
+    .setFontSize(12)
+    .setVerticalAlignment("middle")
+    .setBorder(true, true, true, true, true, true, CONFIG.CORES.BORDA, SpreadsheetApp.BorderStyle.SOLID);
+
+  aba.getRange("B6:B9").setFontWeight("bold").setFontColor(CONFIG.CORES.TEXTO_CLARO).setHorizontalAlignment("right");
+  aba.getRange("D6:D8").setFontWeight("bold").setFontColor(CONFIG.CORES.TEXTO_CLARO).setHorizontalAlignment("right");
+  aba.getRange("C6:C9").setHorizontalAlignment("left");
+  aba.getRange("E6:E8").setHorizontalAlignment("left");
+  aba.getRange("C9:E9").merge().setHorizontalAlignment("left");
+
+  for (let linha = 6; linha <= 9; linha++) {
+    aba.setRowHeight(linha, 30);
+  }
+}
+
+function montarTabelaRelatorio(aba, patrimonios) {
+  const linhaTitulo = 12;
+  const linhaCabecalho = 13;
+  const linhaDados = 14;
+
+  aba.getRange(linhaTitulo, 2, 1, 5).merge().setValue("PATRIMÔNIOS CADASTRADOS")
+    .setFontColor(CONFIG.CORES.PRIMARIA)
+    .setFontSize(14)
+    .setFontWeight("bold");
+
+  aba.getRange(linhaCabecalho, 2, 1, 5).setValues([[
+    "PATRIMÔNIO",
+    "POSSUI?",
+    "QUANTIDADE",
+    "CONSERVAÇÃO",
+    "OBSERVAÇÃO"
+  ]])
+    .setBackground(CONFIG.CORES.PRIMARIA)
+    .setFontColor("#ffffff")
+    .setFontWeight("bold")
+    .setFontSize(12)
+    .setHorizontalAlignment("center");
+
+  const linhas = patrimonios.length
+    ? patrimonios.map(function(item) {
+      return [item.patrimonio, item.possui, item.quantidade, item.conservacao, item.observacao || "-"];
+    })
+    : [["NENHUM PATRIMÔNIO INFORMADO", "-", "-", "-", "-"]];
+
+  aba.getRange(linhaDados, 2, linhas.length, 5).setValues(linhas)
+    .setFontSize(12)
+    .setVerticalAlignment("middle")
+    .setBorder(true, true, true, true, true, true, CONFIG.CORES.BORDA, SpreadsheetApp.BorderStyle.SOLID);
+
+  const fundos = linhas.map(function(_, indice) {
+    return indice % 2 === 0
+      ? ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"]
+      : [CONFIG.CORES.ZEBRA, CONFIG.CORES.ZEBRA, CONFIG.CORES.ZEBRA, CONFIG.CORES.ZEBRA, CONFIG.CORES.ZEBRA];
+  });
+
+  aba.getRange(linhaDados, 2, linhas.length, 5).setBackgrounds(fundos);
+  aba.getRange(linhaDados, 2, linhas.length, 1).setFontWeight("bold").setHorizontalAlignment("left");
+  aba.getRange(linhaDados, 3, linhas.length, 3).setHorizontalAlignment("center");
+  aba.getRange(linhaDados, 6, linhas.length, 1).setHorizontalAlignment("left").setWrap(true);
+
+  for (let i = 0; i < linhas.length; i++) {
+    aba.setRowHeight(linhaDados + i, 30);
+  }
+}
+
+function montarRodapeRelatorio(aba) {
+  aba.getRange("B45:E45").merge()
+    .setValue("RELATÓRIO GERADO AUTOMATICAMENTE EM " + formatarDataHora(new Date()))
+    .setFontSize(10)
+    .setFontColor(CONFIG.CORES.TEXTO_CLARO)
+    .setHorizontalAlignment("right");
+}
+
+function montarUrlExportacaoPdf(idPlanilha, gid) {
+  return "https://docs.google.com/spreadsheets/d/" + idPlanilha + "/export" +
+    "?format=pdf" +
+    "&gid=" + gid +
+    "&size=A4" +
+    "&portrait=true" +
+    "&fitw=true" +
+    "&sheetnames=false" +
+    "&printtitle=false" +
+    "&pagenumbers=false" +
+    "&gridlines=false" +
+    "&fzr=false" +
+    "&top_margin=0.35" +
+    "&bottom_margin=0.35" +
+    "&left_margin=0.35" +
+    "&right_margin=0.35";
+}
+
+function obterPastaPdfRelatorio(regiao) {
+  const pastaRaiz = obterOuCriarPastaDrive(CONFIG.PASTA_PDFS_RELATORIOS || "RELATORIOS_PATRIMONIO_IPDA");
+  const nomeRegiao = limparNomeArquivoDrive(normalizarTexto(regiao) || "SEM_REGIAO");
+  return obterOuCriarPastaDrive(nomeRegiao, pastaRaiz);
+}
+
+function obterOuCriarPastaDrive(nome, pastaPai) {
+  const pastas = pastaPai
+    ? pastaPai.getFoldersByName(nome)
+    : DriveApp.getFoldersByName(nome);
+
+  if (pastas.hasNext()) {
+    return pastas.next();
+  }
+
+  return pastaPai
+    ? pastaPai.createFolder(nome)
+    : DriveApp.createFolder(nome);
+}
+
+function limparNomeArquivoDrive(valor) {
+  return String(valor || "")
+    .replace(/[\\\/\?\*\[\]\:]/g, "-")
+    .replace(/\s+/g, "_")
+    .substring(0, 80);
+}

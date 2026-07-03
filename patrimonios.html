@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patrimonios IPDA - SP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="img/favicon.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="style/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <img src="img/logo.png" alt="Logo IPDA" class="logo">
+        <h1>Patrimonios IPDA - SP</h1>
+        <p class="subtitulo">Cadastro patrimonial da igreja</p>
+
+        <div class="progresso" id="progresso-texto">Categoria 1 de 5: Mobiliario e Estrutura</div>
+
+        <nav class="wizard-nav" id="wizard-nav" aria-label="Categorias do cadastro patrimonial"></nav>
+
+        <div class="card resumo-card" id="resumoIgreja">
+            <h2>Dados da Igreja</h2>
+            <div class="resumo-grid">
+                <div class="resumo-item destaque"><span>Codigo TOTVS</span><strong id="infoTotvs"></strong></div>
+                <div class="resumo-item"><span>Regiao</span><strong id="infoRegiao"></strong></div>
+                <div class="resumo-item"><span>Estadual</span><strong id="infoEstadual"></strong></div>
+                <div class="resumo-item"><span>Dirigente</span><strong id="infoDirigente"></strong></div>
+                <div class="resumo-item"><span>Telefone</span><strong id="infoTelefone"></strong></div>
+                <div class="resumo-item"><span>Endereco da Igreja</span><strong id="infoEndereco"></strong></div>
+            </div>
+        </div>
+
+        <form id="formularioPatrimonio">
+            <div id="categorias-container"></div>
+
+            <div id="mensagem-status" class="mensagem-status" style="display: none;"></div>
+
+            <div class="botoes">
+                <button type="button" class="voltar" id="btn-voltar-wizard">Voltar</button>
+                <button type="button" id="btn-avancar-wizard">Avancar Pagina</button>
+                <button type="submit" id="btn-enviar" style="display: none;">Finalizar Cadastro</button>
+            </div>
+        </form>
+
+        <button id="btn-topo" title="Voltar ao Topo">&uarr;</button>
+
+        <footer class="footer">
+            <p>Contato: <a href="tel:+551133480807">(11) 3348-0807 </a></p>
+            <p>Site Oficial: <a href="https://www.ipda.com.br" target="_blank">www.ipda.com.br</a></p>
+            <!-- <p>Administracao: <a href="relatorios.html">Gerar relatorios patrimoniais</a></p> -->
+            <p>Rua Alexandre Levi, 50 - Cambuci - Sao Paulo/SP</p>
+        </footer>
+    </div>
+
+    <script src="script/patrimonio.js"></script>
+</body>
+</html>

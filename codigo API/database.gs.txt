@@ -1,0 +1,361 @@
+function inicializarBanco() {
+  obterDestinosConfigurados().forEach(function(destino) {
+    if (!destinoTemPlanilhaConfigurada(destino)) {
+      return;
+    }
+
+    const planilha = abrirPlanilhaDestino(destino);
+
+    garantirCabecalho(obterOuCriarAba(planilha, destino.base), CONFIG.CABECALHOS.BASE);
+    garantirCabecalho(obterOuCriarAba(planilha, destino.patrimonios), CONFIG.CABECALHOS.PATRIMONIOS);
+  });
+}
+
+function obterDestinosConfigurados() {
+  const mapa = CONFIG.PLANILHAS_REGIONAIS || {};
+  const destinos = Object.keys(mapa).map(function(chave) {
+    const destino = mapa[chave];
+    return {
+      chave: chave,
+      spreadsheetId: destino.spreadsheetId || "",
+      base: destino.base || CONFIG.ABA_BASE,
+      patrimonios: destino.patrimonios || CONFIG.ABA_PATRIMONIOS
+    };
+  });
+
+  destinos.push({
+    chave: "PADRAO",
+    spreadsheetId: "",
+    base: CONFIG.ABA_BASE,
+    patrimonios: CONFIG.ABA_PATRIMONIOS
+  });
+
+  return destinos.filter(function(item, indice, lista) {
+    return lista.findIndex(function(outro) {
+      return (outro.spreadsheetId || "ATIVA") === (item.spreadsheetId || "ATIVA") &&
+        outro.base === item.base &&
+        outro.patrimonios === item.patrimonios;
+    }) === indice;
+  });
+}
+
+function resolverDestinoPorRegiao(regiao, regiaoChave) {
+  const chave = normalizarChaveRegiao(regiaoChave || regiao);
+  const destino = CONFIG.PLANILHAS_REGIONAIS && CONFIG.PLANILHAS_REGIONAIS[chave];
+
+  if (!destino) {
+    if (!ehRegiaoPlanilhaPrincipal(chave)) {
+      throw new Error("Região não configurada para roteamento: " + regiao + " (" + chave + "). Confira CONFIG.PLANILHAS_REGIONAIS.");
+    }
+
+    return {
+      chave: chave || "PADRAO",
+      spreadsheetId: "",
+      base: CONFIG.ABA_BASE,
+      patrimonios: CONFIG.ABA_PATRIMONIOS
+    };
+  }
+
+  return {
+    chave: chave,
+    spreadsheetId: destino.spreadsheetId || "",
+    base: destino.base || CONFIG.ABA_BASE,
+    patrimonios: destino.patrimonios || CONFIG.ABA_PATRIMONIOS
+  };
+}
+
+function ehRegiaoPlanilhaPrincipal(chave) {
+  return chave === "GRANDE SAO PAULO - SP" ||
+    chave === "INTERIOR - SP" ||
+    chave === "LITORAL - SP";
+}
+
+function diagnosticarRoteamento(regiao, regiaoChave) {
+  const destino = resolverDestinoPorRegiao(regiao, regiaoChave);
+  const planilha = abrirPlanilhaDestino(destino);
+
+  return {
+    regiaoRecebida: regiao,
+    regiaoChaveRecebida: regiaoChave || "",
+    chaveNormalizada: normalizarChaveRegiao(regiaoChave || regiao),
+    destino: destino.chave,
+    spreadsheetIdConfigurado: destino.spreadsheetId || "PLANILHA_ATIVA_SP",
+    spreadsheetIdReal: planilha.getId(),
+    planilhaUrl: planilha.getUrl(),
+    abaBase: destino.base,
+    abaPatrimonios: destino.patrimonios
+  };
+}
+
+function abrirPlanilhaDestino(destino) {
+  const id = destino && destino.spreadsheetId ? String(destino.spreadsheetId).trim() : "";
+
+  if (!id) {
+    return obterPlanilha();
+  }
+
+  if (id.indexOf("COLE_AQUI") === 0) {
+    throw new Error("Informe o spreadsheetId da planilha da região " + destino.chave + " no CONFIG.PLANILHAS_REGIONAIS.");
+  }
+
+  return SpreadsheetApp.openById(id);
+}
+
+function destinoTemPlanilhaConfigurada(destino) {
+  const id = destino && destino.spreadsheetId ? String(destino.spreadsheetId).trim() : "";
+  return !id || id.indexOf("COLE_AQUI") !== 0;
+}
+
+function normalizarChaveRegiao(valor) {
+  return normalizarTexto(valor)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function salvarBaseGeral(dados) {
+  const destino = resolverDestinoPorRegiao(dados.regiao, dados.regiaoChave);
+  validarDestinoCadastro(dados, destino);
+  const planilha = abrirPlanilhaDestino(destino);
+  const aba = obterAbaObrigatoria(destino.base, planilha);
+  const linha = aba.getLastRow() + 1;
+  const linkRelatorio = montarUrlRelatorioDireto(dados.totvs);
+
+  aba.getRange(linha, 1, 1, CONFIG.CABECALHOS.BASE.length).setValues([[
+    dados.totvs,
+    dados.regiao,
+    dados.estadual,
+    dados.dirigente,
+    dados.telefone,
+    dados.endereco,
+    new Date(),
+    linkRelatorio ? "Gerar relatório" : ""
+  ]]);
+
+  if (linkRelatorio) {
+    aba.getRange(linha, 8).setRichTextValue(
+      SpreadsheetApp.newRichTextValue()
+        .setText("Gerar relatório")
+        .setLinkUrl(linkRelatorio)
+        .build()
+    );
+  }
+}
+
+function salvarPatrimonios(dados) {
+  const linhas = montarLinhasPatrimonios(dados);
+
+  if (!linhas.length) {
+    return;
+  }
+
+  const destino = resolverDestinoPorRegiao(dados.regiao, dados.regiaoChave);
+  validarDestinoCadastro(dados, destino);
+  const planilha = abrirPlanilhaDestino(destino);
+  const aba = obterAbaObrigatoria(destino.patrimonios, planilha);
+  const linhaInicial = aba.getLastRow() + 1;
+
+  aba.getRange(linhaInicial, 1, linhas.length, CONFIG.CABECALHOS.PATRIMONIOS.length).setValues(linhas);
+}
+
+function montarLinhasPatrimonios(dados) {
+  const linhas = CONFIG.PATRIMONIOS.reduce(function(lista, item) {
+    const possui = valorCampo(dados, item.possui);
+    const quantidade = normalizarQuantidade(dados.raw && dados.raw[item.qtd]);
+
+    if (possui !== "SIM" || quantidade <= 0) {
+      return lista;
+    }
+
+    lista.push([
+      dados.totvs,
+      item.nome,
+      "SIM",
+      quantidade,
+      valorCampo(dados, item.estado) || "-",
+      valorCampo(dados, item.obs) || "-"
+    ]);
+
+    return lista;
+  }, []);
+
+  return linhas.concat(montarLinhasItensExtras(dados));
+}
+
+function validarDestinoCadastro(dados, destino) {
+  const chave = normalizarChaveRegiao(dados.regiaoChave || dados.regiao);
+
+  if (!ehRegiaoPlanilhaPrincipal(chave) && !destino.spreadsheetId) {
+    throw new Error("Cadastro bloqueado: a região " + dados.regiao + " não possui spreadsheetId configurado. O registro não foi salvo na planilha de São Paulo.");
+  }
+}
+
+function montarLinhasItensExtras(dados) {
+  let itens = [];
+
+  try {
+    itens = JSON.parse(dados.raw && dados.raw.itensExtras || "[]");
+  } catch (erro) {
+    itens = [];
+  }
+
+  if (!Array.isArray(itens)) {
+    return [];
+  }
+
+  return itens.reduce(function(linhas, item) {
+    const possui = normalizarTexto(item.possui);
+    const quantidade = normalizarQuantidade(item.quantidade);
+    const nome = normalizarTexto(item.nome);
+
+    if (!nome || possui !== "SIM" || quantidade <= 0) {
+      return linhas;
+    }
+
+    linhas.push([
+      dados.totvs,
+      nome,
+      "SIM",
+      quantidade,
+      normalizarTexto(item.estado) || "-",
+      normalizarTexto(item.observacao) || "-"
+    ]);
+
+    return linhas;
+  }, []);
+}
+
+function buscarLinhaBasePorTotvs(totvs) {
+  const chave = normalizarTexto(totvs);
+  const destinos = obterDestinosConfigurados();
+
+  for (let i = 0; i < destinos.length; i++) {
+    const destino = destinos[i];
+    if (!destinoTemPlanilhaConfigurada(destino)) {
+      continue;
+    }
+
+    const planilha = abrirPlanilhaDestino(destino);
+    const aba = planilha.getSheetByName(destino.base);
+
+    if (!aba || aba.getLastRow() < 2) {
+      continue;
+    }
+
+    const range = aba.getRange(2, 1, aba.getLastRow() - 1, 1);
+    const resultado = range.createTextFinder(chave).matchEntireCell(true).findNext();
+
+    if (resultado) {
+      return {
+        planilha: planilha,
+        aba: aba,
+        linha: resultado.getRow(),
+        destino: destino
+      };
+    }
+  }
+
+  return -1;
+}
+
+function buscarIgrejaPorTotvs(totvs) {
+  const resultado = buscarLinhaBasePorTotvs(totvs);
+
+  if (resultado === -1) {
+    throw new Error("Codigo TOTVS nao encontrado.");
+  }
+
+  const valores = resultado.aba.getRange(resultado.linha, 1, 1, CONFIG.CABECALHOS.BASE.length).getValues()[0];
+
+  return {
+    totvs: valores[0],
+    regiao: valores[1],
+    estadual: valores[2],
+    dirigente: valores[3],
+    telefone: valores[4],
+    endereco: valores[5],
+    dataCadastro: valores[6],
+    planilha: resultado.planilha,
+    destino: resultado.destino
+  };
+}
+
+function buscarPatrimoniosPorTotvs(totvs, destinoEncontrado) {
+  const chave = normalizarTexto(totvs);
+  const destinos = destinoEncontrado ? [destinoEncontrado] : obterDestinosConfigurados();
+  let encontrados = [];
+
+  destinos.forEach(function(destino) {
+    if (!destinoTemPlanilhaConfigurada(destino)) {
+      return;
+    }
+
+    const planilha = abrirPlanilhaDestino(destino);
+    const aba = planilha.getSheetByName(destino.patrimonios);
+
+    if (!aba || aba.getLastRow() < 2) {
+      return;
+    }
+
+    const valores = aba.getRange(2, 1, aba.getLastRow() - 1, CONFIG.CABECALHOS.PATRIMONIOS.length).getValues();
+    encontrados = encontrados.concat(valores
+      .filter(function(linha) {
+        return normalizarTexto(linha[0]) === chave;
+      })
+      .map(function(linha) {
+        return {
+          totvs: linha[0],
+          patrimonio: linha[1],
+          possui: linha[2],
+          quantidade: linha[3],
+          conservacao: linha[4],
+          observacao: linha[5] || "-"
+        };
+      }));
+  });
+
+  return encontrados;
+}
+
+function formatarTabelasBanco() {
+  obterDestinosConfigurados().forEach(function(destino) {
+    if (!destinoTemPlanilhaConfigurada(destino)) {
+      return;
+    }
+
+    const planilha = abrirPlanilhaDestino(destino);
+    const abaBase = planilha.getSheetByName(destino.base);
+    const abaPatrimonios = planilha.getSheetByName(destino.patrimonios);
+
+    if (abaBase) {
+      formatarTabelaBanco(abaBase, CONFIG.CABECALHOS.BASE.length);
+    }
+
+    if (abaPatrimonios) {
+      formatarTabelaBanco(abaPatrimonios, CONFIG.CABECALHOS.PATRIMONIOS.length);
+    }
+  });
+}
+
+function formatarTabelaBanco(aba, colunas) {
+  const ultimaLinha = aba.getLastRow();
+
+  aba.setHiddenGridlines(true);
+  aba.setFrozenRows(0);
+  aba.setFrozenColumns(0);
+
+  aba.getRange(1, 1, 1, colunas)
+    .setBackground(CONFIG.CORES.PRIMARIA)
+    .setFontColor("#ffffff")
+    .setFontWeight("bold")
+    .setFontSize(11)
+    .setHorizontalAlignment("center");
+
+  if (ultimaLinha > 1) {
+    aba.getRange(2, 1, ultimaLinha - 1, colunas)
+      .setFontSize(10)
+      .setVerticalAlignment("middle")
+      .setBorder(true, true, true, true, true, true, CONFIG.CORES.BORDA, SpreadsheetApp.BorderStyle.SOLID);
+  }
+
+  aba.autoResizeColumns(1, colunas);
+}

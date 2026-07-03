@@ -1,0 +1,20 @@
+function respostaSucesso(mensagem, dados) {
+  return respostaJson({
+    sucesso: true,
+    mensagem: mensagem,
+    dados: dados || null
+  });
+}
+
+function respostaErro(mensagem) {
+  return respostaJson({
+    sucesso: false,
+    mensagem: mensagem
+  });
+}
+
+function respostaJson(objeto) {
+  return ContentService
+    .createTextOutput(JSON.stringify(objeto))
+    .setMimeType(ContentService.MimeType.JSON);
+}

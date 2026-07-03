@@ -1,0 +1,105 @@
+function obterPayload(e) {
+  if (!e || !e.postData || !e.postData.contents) {
+    throw new Error("Nenhum dado foi recebido.");
+  }
+
+  return JSON.parse(e.postData.contents);
+}
+
+function normalizarCadastro(payload) {
+  return {
+    totvs: normalizarTexto(payload.totvs),
+    regiao: normalizarTexto(payload.regiao),
+    regiaoChave: normalizarChaveRegiao(payload.regiaoChave || payload.regiao),
+    estadual: normalizarTexto(payload.estadual),
+    dirigente: normalizarTexto(payload.dirigente),
+    telefone: normalizarTexto(payload.telefone),
+    endereco: normalizarTexto(payload.endereco),
+    raw: payload
+  };
+}
+
+function normalizarTexto(valor) {
+  if (valor === null || valor === undefined) {
+    return "";
+  }
+
+  return String(valor).trim().toUpperCase();
+}
+
+function normalizarQuantidade(valor) {
+  const numero = Number(String(valor || "0").replace(",", "."));
+  return isNaN(numero) ? 0 : numero;
+}
+
+function valorCampo(dados, campo) {
+  return normalizarTexto(dados.raw && dados.raw[campo]);
+}
+
+function limparNomeAba(valor) {
+  return normalizarTexto(valor)
+    .replace(/[\\\/\?\*\[\]\:]/g, "-")
+    .substring(0, 80);
+}
+
+function obterPlanilha() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function obterOuCriarAba(planilha, nome) {
+  return planilha.getSheetByName(nome) || planilha.insertSheet(nome);
+}
+
+function obterAbaObrigatoria(nome, planilha) {
+  const arquivo = planilha || obterPlanilha();
+  const aba = arquivo.getSheetByName(nome);
+
+  if (!aba) {
+    throw new Error("A aba " + nome + " não foi encontrada.");
+  }
+
+  return aba;
+}
+
+function montarUrlRelatorioDireto(totvs) {
+  try {
+    const url = ScriptApp.getService().getUrl();
+    if (!url) {
+      return "";
+    }
+
+    return url + "?acao=gerarRelatorio&totvs=" + encodeURIComponent(normalizarTexto(totvs));
+  } catch (erro) {
+    return "";
+  }
+}
+
+function garantirCabecalho(aba, cabecalho) {
+  const range = aba.getRange(1, 1, 1, cabecalho.length);
+  const atual = range.getDisplayValues()[0].join("|");
+  const esperado = cabecalho.join("|");
+
+  if (atual !== esperado) {
+    range.setValues([cabecalho]);
+  }
+}
+
+function formatarData(data) {
+  if (!data) {
+    return "";
+  }
+
+  return Utilities.formatDate(new Date(data), CONFIG.TIMEZONE, "dd/MM/yyyy");
+}
+
+function formatarDataHora(data) {
+  return Utilities.formatDate(new Date(data), CONFIG.TIMEZONE, "dd/MM/yyyy HH:mm");
+}
+
+function registrarErro(origem, erro) {
+  Logger.log("[" + origem + "] " + erro);
+}
+
+function mensagemErro(erro) {
+  return erro && erro.message ? erro.message : String(erro);
+}

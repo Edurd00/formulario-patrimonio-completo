@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - Patrimônios IPDA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="img/favicon.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="style/style.css">
+</head>
+
+<body>
+    <div class="container container-relatorio">
+        <img src="img/logo.png" alt="Logo IPDA" class="logo">
+
+        <h1>Relatórios Patrimoniais</h1>
+        <p class="subtitulo">Geração sob demanda de relatório corporativo por código TOTVS</p>
+
+        <section class="card painel-relatorio painel-relatorio-admin">
+            <h2>Gerar relatório da igreja</h2>
+            <p class="descricao-campo">Informe o código TOTVS para criar uma aba temporária limpa na planilha ou exportar o relatório completo em PDF.</p>
+
+            <label for="totvsRelatorio">Código TOTVS</label>
+            <input type="text" id="totvsRelatorio" maxlength="5" placeholder="Ex: 12345" autofocus>
+
+            <div class="botoes relatorio-botoes">
+                <button type="button" id="btn-gerar-relatorio">Criar Aba Temporária</button>
+                <button type="button" id="btn-exportar-pdf" class="botao-secundario">Exportar PDF</button>
+            </div>
+
+            <div id="mensagem-relatorio" class="mensagem-status" style="display: none;"></div>
+        </section>
+
+        <footer class="footer">
+            <p>
+                <a href="index.html">Voltar ao cadastro</a>
+            </p>
+            <p>Rua Alexandre Levi, 50 - Cambuci - São Paulo/SP</p>
+        </footer>
+    </div>
+
+    <script src="script/relatorio.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,15 @@
+function validarCadastro(dados) {
+  if (!dados) {
+    throw new Error("Dados não informados.");
+  }
+
+  if (!dados.totvs) {
+    throw new Error("Código TOTVS obrigatório.");
+  }
+}
+
+function validarTotvsUnico(totvs) {
+  if (buscarLinhaBasePorTotvs(totvs) !== -1) {
+    throw new Error("Código TOTVS já cadastrado.");
+  }
+}

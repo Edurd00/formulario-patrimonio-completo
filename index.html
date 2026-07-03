@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Patrimônios IPDA - SP
+    </title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="icon" href="img/favicon.jpg" type="image/jpeg">
+
+    <link rel="stylesheet" href="style/style.css">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <img src="img/logo.png" alt="Logo IPDA" class="logo">
+
+        <h1>
+            Patrimônios IPDA
+        </h1>
+
+        <p class="subtitulo">
+            Sistema de controle patrimonial das igrejas
+        </p>
+
+        <div class="progresso">
+            Etapa 1 de 2
+        </div>
+
+        <form id="formulario">
+
+            <div class="card">
+                <h2>Região e Estadual</h2>
+
+                <label for="regiao">Região</label>
+                <select id="regiao" required>
+                    <option value="">Selecione a Região</option>
+                </select>
+
+                <label for="estadual">Estadual</label>
+                <select id="estadual" required disabled>
+                    <option value="">Selecione primeiro a Região</option>
+                </select>
+
+            </div>
+
+            <div class="card">
+
+                <label for="endereco">Endereço da Igreja</label>
+                <input type="text" id="endereco" placeholder="Rua, Número, Bairro - Cidade/SP" required>
+
+
+                <label for="totvs">Código TOTVS</label>
+                <p class="instrucao">O mesmo código usado nos relatórios financeiros</p>
+                <input type="text" id="totvs" maxlength="5" placeholder="Ex: 12345" required>
+                <small id="erro-totvs"></small>
+            </div>
+
+            <div class="card">
+                <h2>Responsável</h2>
+
+                <label for="dirigente">Nome completo do dirigente responsável</label>
+                <input type="text" id="dirigente" placeholder="Digite o nome completo" required>
+
+                <label for="telefone">Número de telefone do dirigente responsável</label>
+                <input type="text" id="telefone" placeholder="(11) 99999-9999" required>
+            </div>
+
+            <button type="submit" id="btn-proximo">Próxima Etapa</button>
+
+        </form>
+
+        <footer class="footer">
+
+            <p>
+                Contato:
+                <a href="tel:+5511999999999">
+                    (11) 3348-0807
+                </a>
+            </p>
+
+            <p>
+                Site Oficial:
+                <a href="https://www.ipda.com.br" target="_blank">
+
+                    www.ipda.com.br
+
+                </a>
+            </p>
+
+            <!-- <p>
+                Administração:
+                <a href="relatorios.html">
+                    Gerar relatórios patrimoniais
+                </a>
+            </p> -->
+
+            <p>
+                Rua Alexandre Levi, 50 - Cambuci - São Paulo/SP
+            </p>
+
+        </footer>
+
+    </div>
+
+
+    <script src="script/script.js"></script>
+
+</body>
+
+</html>

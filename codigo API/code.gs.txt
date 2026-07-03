@@ -1,0 +1,79 @@
+function doGet(e) {
+  try {
+    inicializarBanco();
+
+    const parametros = e && e.parameter ? e.parameter : {};
+    const acao = normalizarTexto(parametros.acao || "").toLowerCase();
+
+    if (acao === "gerarrelatorio" || acao === "gerar_relatorio") {
+      const relatorio = gerarRelatorioPorTotvs(parametros.totvs);
+      return HtmlService.createHtmlOutput(
+        '<script>window.top.location.href="' + relatorio.url + '";</script>' +
+        '<p>Relatorio gerado. <a href="' + relatorio.url + '" target="_top">Abrir relatorio</a></p>'
+      );
+    }
+
+    if (acao === "testarroteamento" || acao === "testar_roteamento") {
+      return respostaSucesso("Roteamento consultado com sucesso.", diagnosticarRoteamento(parametros.regiao, parametros.regiaoChave));
+    }
+
+    return respostaSucesso("Backend online.", {
+      app: CONFIG.APP_NAME,
+      rotas: ["cadastrar", "gerarRelatorio", "exportarPdf"]
+    });
+  } catch (erro) {
+    registrarErro("doGet", erro);
+    return HtmlService.createHtmlOutput("Erro ao gerar relatorio: " + mensagemErro(erro));
+  }
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+
+  try {
+    lock.waitLock(30000);
+
+    const payload = obterPayload(e);
+    const acao = normalizarTexto(payload.acao || "cadastrar").toLowerCase();
+
+    inicializarBanco();
+
+    if (acao === "gerarrelatorio" || acao === "gerar_relatorio") {
+      return respostaSucesso("Relatório gerado com sucesso.", gerarRelatorioPorTotvs(payload.totvs));
+    }
+
+    if (acao === "exportarpdf" || acao === "exportar_pdf") {
+      return respostaSucesso("PDF exportado com sucesso.", exportarPdfRelatorio(payload.totvs, true));
+    }
+
+    if (acao === "testarroteamento" || acao === "testar_roteamento") {
+      return respostaSucesso("Roteamento consultado com sucesso.", diagnosticarRoteamento(payload.regiao, payload.regiaoChave));
+    }
+
+    return cadastrarIgreja(payload);
+  } catch (erro) {
+    registrarErro("doPost", erro);
+    return respostaErro(mensagemErro(erro));
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (erroLock) {
+      Logger.log(erroLock);
+    }
+  }
+}
+
+function cadastrarIgreja(payload) {
+  const dados = normalizarCadastro(payload);
+
+  validarCadastro(dados);
+  validarTotvsUnico(dados.totvs);
+
+  salvarBaseGeral(dados);
+  salvarPatrimonios(dados);
+  formatarTabelasBanco();
+
+  return respostaSucesso("Cadastro realizado com sucesso.", {
+    totvs: dados.totvs
+  });
+}
