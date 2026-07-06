@@ -29,63 +29,82 @@ app.get('/api/validar-totvs/:codigo', async (req, res) => {
     }
 });
 
-// Rota de Cadastro com Transação SQL
+// Rota de Cadastro com Transação SQL Corrigida
 app.post('/api/cadastro', async (req, res) => {
     const client = await pool.connect();
     try {
         const {
             totvs, regiao, estadual, dirigente, telefone, endereco, cep,
-            itensExtras // JSON string vindo do frontend
+            itensExtras
         } = req.body;
 
         await client.query('BEGIN');
 
         // 1. Salvar ou Atualizar Igreja na tabela 'igrejas'
         const upsertIgrejaQuery = `
-            INSERT INTO igrejas (totvs, regiao, estadual, dirigente, telefone, endereco, cep, data_cadastro)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            INSERT INTO igrejas (totvs, regiao, estadual, endereco, dirigente, telefone, data_cadastro)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
             ON CONFLICT (totvs) DO UPDATE SET
                 regiao = EXCLUDED.regiao,
                 estadual = EXCLUDED.estadual,
+                endereco = EXCLUDED.endereco,
                 dirigente = EXCLUDED.dirigente,
                 telefone = EXCLUDED.telefone,
-                endereco = EXCLUDED.endereco,
-                cep = EXCLUDED.cep,
                 data_cadastro = NOW()
             RETURNING totvs;
         `;
-        await client.query(upsertIgrejaQuery, [totvs, regiao, estadual, dirigente, telefone, endereco, cep]);
+        await client.query(upsertIgrejaQuery, [totvs, regiao, estadual, endereco, dirigente, telefone]);
 
-        // 2. Limpar patrimônios antigos desta igreja para re-cadastrar (opcional, dependendo da regra)
-        await client.query('DELETE FROM patrimonios WHERE igreja_totvs = $1', [totvs]);
+        // 2. Limpar patrimônios antigos desta igreja usando a coluna correta 'totvs'
+        await client.query('DELETE FROM patrimonios WHERE totvs = $1', [totvs]);
 
-        // 3. Salvar itens dinâmicos do formulário (mapeando campos fixos do Apps Script para SQL)
+        // 3. Mapeamento de IDs para os nomes corretos do formulário original
+        const mapeamentoNomes = {
+            banco: "BANCOS", cadeira: "CADEIRAS", bebedouroFiltro: "BEBEDOURO OU FILTRO",
+            ar: "AR CONDICIONADO", ventilator: "VENTILADORES", armario: "ARMÁRIO",
+            mesa: "MESA", cofreBocaLobo: "COFRE BOCA DE LOBO", computador: "COMPUTADOR",
+            impressora: "IMPRESSORA", projetor: "PROJETOR", telaProjetor: "TELA DE PROJETOR",
+            microfone: "MICROFONE", pulpito: "PÚLPITO", telefonePatrimonio: "TELEFONE",
+            celular: "CELULAR", cameraSeguranca: "CÂMERA DE SEGURANÇA", caixaSom: "CAIXAS DE SOM",
+            mesaSom: "MESA DE SOM", violao: "VIOLÃO", guitarra: "GUITARRA", bateria: "BATERIA",
+            contrabaixo: "CONTRABAIXO", teclado: "TECLADO", freezer: "FREEZER",
+            geladeira: "GELADEIRA", fogao: "FOGÃO", botijao: "BOTIJÃO",
+            microondas: "MICRO-ONDAS", extintor: "EXTINTOR"
+        };
+
+        // 4. Salvar itens dinâmicos com colunas alinhadas ao Neon (totvs, patrimonio, possui, quantidade, conservacao, observacao)
         const entries = Object.entries(req.body);
         for (const [key, value] of entries) {
             if (key.endsWith('Possui')) {
                 const itemId = key.replace('Possui', '');
-                const possui = value;
-                const qtd = req.body[`${itemId}Qtd`] || 0;
-                const estado = req.body[`${itemId}Estado`] || '';
-                const obs = req.body[`${itemId}Obs`] || '';
+                const possui = String(value).toUpperCase();
+                const qtd = parseInt(req.body[`${itemId}Qtd`]) || 0;
+                const estado = req.body[`${itemId}Estado`] || '-';
+                const obs = req.body[`${itemId}Obs`] || '-';
+                const nomeFormatado = mapeamentoNomes[itemId] || itemId.toUpperCase();
 
-                if (possui === 'Sim' || possui === 'Nao') {
+                if (possui === 'SIM' && qtd > 0) {
                     await client.query(
-                        'INSERT INTO patrimonios (igreja_totvs, item_id, possui, quantidade, estado, observacao) VALUES ($1, $2, $3, $4, $5, $6)',
-                        [totvs, itemId, possui, qtd, estado, obs]
+                        'INSERT INTO patrimonios (totvs, patrimonio, possui, quantidade, conservacao, observacao) VALUES ($1, $2, $3, $4, $5, $6)',
+                        [totvs, nomeFormatado, possui, qtd, estado, obs]
                     );
                 }
             }
         }
 
-        // 4. Salvar itens extras (adicionados manualmente)
+        // 5. Salvar itens extras coletados do sub-formulario
         if (itensExtras) {
-            const extras = JSON.parse(itensExtras);
+            const extras = typeof itensExtras === 'string' ? JSON.parse(itensExtras) : itensExtras;
             for (const item of extras) {
-                await client.query(
-                    'INSERT INTO patrimonios (igreja_totvs, item_id, possui, quantidade, estado, observacao, nome_extra) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-                    [totvs, 'extra', item.possui, item.quantidade || 0, item.estado, item.observacao, item.nome]
-                );
+                const possuiExtra = String(item.possui).toUpperCase();
+                const qtdExtra = parseInt(item.quantidade) || 0;
+                
+                if (possuiExtra === 'SIM' && qtdExtra > 0) {
+                    await client.query(
+                        'INSERT INTO patrimonios (totvs, patrimonio, possui, quantidade, conservacao, observacao) VALUES ($1, $2, $3, $4, $5, $6)',
+                        [totvs, String(item.nome).toUpperCase(), possuiExtra, qtdExtra, item.estado || '-', item.observacao || '-']
+                    );
+                }
             }
         }
 
@@ -100,7 +119,7 @@ app.post('/api/cadastro', async (req, res) => {
     }
 });
 
-// Rota para listagem de igrejas (Painel Admin) com Paginação e Filtros
+// Rota para listagem do Painel Admin
 app.get('/api/igrejas', async (req, res) => {
     try {
         const { pagina = 1, regiao, totvs } = req.query;
@@ -121,10 +140,8 @@ app.get('/api/igrejas', async (req, res) => {
         }
 
         query += ` ORDER BY data_cadastro DESC LIMIT ${limite} OFFSET ${offset}`;
-
         const result = await pool.query(query, params);
 
-        // Query para contar o total (para paginação no frontend)
         let countQuery = 'SELECT COUNT(*) FROM igrejas WHERE 1=1';
         const countParams = [];
         if (regiao) {
@@ -149,7 +166,6 @@ app.get('/api/igrejas', async (req, res) => {
     }
 });
 
-// Placeholder para futuras rotas do Neon.tech
 app.get('/api/status', (req, res) => {
     res.json({ status: 'Servidor rodando', database: 'Pronto para Neon.tech' });
 });
