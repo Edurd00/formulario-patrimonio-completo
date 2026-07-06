@@ -1,13 +1,8 @@
 {
-  "functions": {
-    "codigo API/server.js": {
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "codigo API/server.js"
+      "source": "/api/(.*)",
+      "destination": "/codigo API/server.js"
     }
   ]
 }
