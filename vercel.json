@@ -1,15 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "codigo API/server.js",
-      "use": "@vercel/node"
+  "functions": {
+    "codigo API/server.js": {
+      "runtime": "@vercel/node"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "codigo API/server.js"
+      "source": "/(.*)",
+      "destination": "codigo API/server.js"
     }
   ]
 }
