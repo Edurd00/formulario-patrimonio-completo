@@ -17,6 +17,15 @@ function doGet(e) {
       return respostaSucesso("Roteamento consultado com sucesso.", diagnosticarRoteamento(parametros.regiao, parametros.regiaoChave));
     }
 
+    if (acao === "listar_igrejas" || acao === "listarigrejas") {
+      return respostaSucesso("Lista de igrejas recuperada com sucesso.", listarTodasIgrejas());
+    }
+
+    if (acao === "validar-totvs" || acao === "validartotvs") {
+      const existe = buscarLinhaBasePorTotvs(parametros.totvs) !== -1;
+      return respostaSucesso("Validacao concluida.", { existe: existe });
+    }
+
     return respostaSucesso("Backend online.", {
       app: CONFIG.APP_NAME,
       rotas: ["cadastrar", "gerarRelatorio", "exportarPdf"]
@@ -61,6 +70,52 @@ function doPost(e) {
       Logger.log(erroLock);
     }
   }
+}
+
+function listarTodasIgrejas() {
+  const destinos = obterDestinosConfigurados();
+  let todasIgrejas = [];
+
+  destinos.forEach(function(destino) {
+    if (!destinoTemPlanilhaConfigurada(destino)) {
+      return;
+    }
+
+    try {
+      const planilha = abrirPlanilhaDestino(destino);
+      const aba = planilha.getSheetByName(destino.base);
+
+      if (!aba || aba.getLastRow() < 2) {
+        return;
+      }
+
+      const valores = aba.getRange(2, 1, aba.getLastRow() - 1, 6).getValues();
+      const igrejasDestino = valores.map(function(linha) {
+        return {
+          totvs: linha[0],
+          regiao: linha[1],
+          estadual: linha[2],
+          dirigente: linha[3],
+          telefone: linha[4],
+          endereco: linha[5]
+        };
+      });
+
+      todasIgrejas = todasIgrejas.concat(igrejasDestino);
+    } catch (erro) {
+      registrarErro("listarTodasIgrejas - " + destino.chave, erro);
+    }
+  });
+
+  // Remover duplicatas por TOTVS (caso o mesmo TOTVS apareça em planilhas diferentes)
+  const mapa = {};
+  return todasIgrejas.filter(function(igreja) {
+    if (mapa[igreja.totvs]) {
+      return false;
+    }
+    mapa[igreja.totvs] = true;
+    return true;
+  });
 }
 
 function cadastrarIgreja(payload) {

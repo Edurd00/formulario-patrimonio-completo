@@ -8,10 +8,8 @@ const telefoneInput = document.getElementById("telefone");
 const totvs = document.getElementById("totvs");
 const erroTotvs = document.getElementById("erro-totvs");
 
-// Futura API URL
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? "http://localhost:3000"
-    : "";
+// URL de Produção do Google Apps Script
+const API_BASE_URL = "https://script.google.com/macros/s/AKfycbwkVzOrEX1QiEcQg0aHG_X9DS0hxcaga5cj0sCbm7huetqVvcLZyvyqrmcco95uAdLkAg/exec";
 if (sessionStorage.getItem("cadastroEnviado") === "true") {
   sessionStorage.removeItem("cadastroEnviado");
 }
@@ -220,15 +218,15 @@ totvs.addEventListener("blur", async function () {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/validar-totvs/${valor}`);
+    const response = await fetch(`${API_BASE_URL}?acao=validar-totvs&totvs=${valor}`);
     const data = await response.json();
 
-    if (data.existe) {
+    if (data.sucesso && data.existe) {
       erroTotvs.innerText = "Este codigo TOTVS ja esta cadastrado no sistema.";
       this.classList.add("erro-input");
     }
   } catch (error) {
-    console.warn("Nao foi possivel conectar a API de validacao TOTVS. Usando validacao local (se disponivel).", error);
+    console.warn("Nao foi possivel conectar a API de validacao TOTVS.", error);
   }
 });
 
@@ -262,10 +260,10 @@ formulario.addEventListener("submit", async function (e) {
 
   // Validacao final via API antes de prosseguir
   try {
-    const response = await fetch(`${API_BASE_URL}/api/validar-totvs/${totvs.value.trim()}`);
+    const response = await fetch(`${API_BASE_URL}?acao=validar-totvs&totvs=${totvs.value.trim()}`);
     const data = await response.json();
 
-    if (data.existe) {
+    if (data.sucesso && data.existe) {
       erroTotvs.innerText = "Codigo TOTVS ja cadastrado.";
       totvs.classList.add("erro-input");
       totvs.focus();
