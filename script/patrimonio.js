@@ -224,9 +224,13 @@ function controlarCampos(cardInfo) {
     if (select.value === "Nao") {
       card.classList.add("card-concluido");
       card.classList.add("card-recolhido");
-    } else if (select.value === "Sim" && qtd.value.trim() !== "" && estado.value !== "" && nomeOk) {
-      card.classList.add("card-concluido");
+    } else if (select.value === "Sim") {
       card.classList.remove("card-recolhido");
+      if (qtd.value.trim() !== "" && estado.value !== "" && nomeOk) {
+        card.classList.add("card-concluido");
+      } else {
+        card.classList.remove("card-concluido");
+      }
     } else {
       card.classList.remove("card-concluido");
       card.classList.remove("card-recolhido");

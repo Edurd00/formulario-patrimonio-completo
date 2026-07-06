@@ -22,36 +22,120 @@ function gerarRelatorioPorTotvs(totvs) {
   };
 }
 
-function exportarPdfRelatorio(totvs, removerAbaTemporaria) {
-  const relatorio = gerarRelatorioPorTotvs(totvs);
-  const planilha = SpreadsheetApp.openById(relatorio.planilhaId);
-  const aba = planilha.getSheetByName(relatorio.aba);
+function exportarPdfRelatorio(totvs) {
+  const chave = normalizarTexto(totvs);
+  const igreja = buscarIgrejaPorTotvs(chave);
+  const patrimonios = buscarPatrimoniosPorTotvs(chave, igreja.destino);
 
-  SpreadsheetApp.flush();
+  const htmlContent = gerarHtmlRelatorio(igreja, patrimonios);
+  const blob = htmlParaPdfBlob(htmlContent, "RELATORIO_PATRIMONIO_" + chave + ".pdf");
 
-  const url = montarUrlExportacaoPdf(planilha.getId(), aba.getSheetId());
-  const resposta = UrlFetchApp.fetch(url, {
-    headers: {
-      Authorization: "Bearer " + ScriptApp.getOAuthToken()
-    }
-  });
-
-  const nomeArquivo = "RELATORIO_PATRIMONIO_" + normalizarTexto(totvs) + ".pdf";
-  const pasta = obterPastaPdfRelatorio(relatorio.regiao);
-  const arquivo = pasta.createFile(resposta.getBlob().setName(nomeArquivo));
-
-  if (removerAbaTemporaria) {
-    planilha.deleteSheet(aba);
-  }
+  const pasta = obterPastaPdfRelatorio(igreja.regiao);
+  const arquivo = pasta.createFile(blob);
 
   return {
-    totvs: normalizarTexto(totvs),
-    regiao: relatorio.regiao,
+    totvs: chave,
+    regiao: igreja.regiao,
     arquivo: arquivo.getName(),
     url: arquivo.getUrl(),
     pasta: pasta.getName(),
     pastaUrl: pasta.getUrl()
   };
+}
+
+function htmlParaPdfBlob(html, nomeArquivo) {
+  const output = HtmlService.createHtmlOutput(html);
+  return output.getAs('application/pdf').setName(nomeArquivo);
+}
+
+function gerarHtmlRelatorio(igreja, patrimonios) {
+  const dataHora = formatarDataHora(new Date());
+
+  let tabelaHtml = "";
+  if (patrimonios.length > 0) {
+    patrimonios.forEach(function(item, index) {
+      const corFundo = index % 2 === 0 ? "#ffffff" : CONFIG.CORES.ZEBRA;
+      tabelaHtml += `
+        <tr style="background-color: ${corFundo};">
+          <td style="padding: 8px; border: 1px solid ${CONFIG.CORES.BORDA}; font-weight: bold;">${item.patrimonio}</td>
+          <td style="padding: 8px; border: 1px solid ${CONFIG.CORES.BORDA}; text-align: center;">${item.possui}</td>
+          <td style="padding: 8px; border: 1px solid ${CONFIG.CORES.BORDA}; text-align: center;">${item.quantidade}</td>
+          <td style="padding: 8px; border: 1px solid ${CONFIG.CORES.BORDA}; text-align: center;">${item.conservacao}</td>
+          <td style="padding: 8px; border: 1px solid ${CONFIG.CORES.BORDA};">${item.observacao || "-"}</td>
+        </tr>
+      `;
+    });
+  } else {
+    tabelaHtml = `<tr><td colspan="5" style="padding: 20px; text-align: center;">NENHUM PATRIMÔNIO INFORMADO</td></tr>`;
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; color: ${CONFIG.CORES.TEXTO}; margin: 0; padding: 20px; background-color: ${CONFIG.CORES.FUNDO}; }
+          .header { background-color: ${CONFIG.CORES.PRIMARIA}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+          .logo { max-width: 150px; margin-bottom: 10px; }
+          .title { font-size: 22px; font-weight: bold; margin: 0; }
+          .subtitle { font-size: 16px; margin: 5px 0 0 0; opacity: 0.9; }
+          .section-title { background-color: ${CONFIG.CORES.SECUNDARIA}; color: ${CONFIG.CORES.PRIMARIA}; padding: 10px; font-weight: bold; font-size: 14px; margin-top: 20px; border-left: 5px solid ${CONFIG.CORES.PRIMARIA}; }
+          .info-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          .info-table td { padding: 10px; border: 1px solid ${CONFIG.CORES.BORDA}; font-size: 12px; }
+          .label { font-weight: bold; color: ${CONFIG.CORES.TEXTO_CLARO}; width: 20%; text-align: right; background-color: #fcfcfc; }
+          .value { width: 30%; }
+          .patrimonio-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+          .patrimonio-table th { background-color: ${CONFIG.CORES.PRIMARIA}; color: white; padding: 10px; text-align: center; border: 1px solid ${CONFIG.CORES.BORDA}; }
+          .footer { margin-top: 30px; text-align: right; font-size: 10px; color: ${CONFIG.CORES.TEXTO_CLARO}; border-top: 1px solid ${CONFIG.CORES.BORDA}; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">PATRIMÔNIOS IPDA ${igreja.regiao ? " - " + igreja.regiao : ""}</div>
+          <div class="subtitle">RELATÓRIO CORPORATIVO</div>
+        </div>
+
+        <div class="section-title">DADOS DA IGREJA</div>
+        <table class="info-table">
+          <tr>
+            <td class="label">CÓDIGO TOTVS</td><td class="value"><b>${igreja.totvs}</b></td>
+            <td class="label">DATA CADASTRO</td><td class="value">${formatarData(igreja.dataCadastro)}</td>
+          </tr>
+          <tr>
+            <td class="label">REGIÃO</td><td class="value">${igreja.regiao}</td>
+            <td class="label">ESTADUAL</td><td class="value">${igreja.estadual}</td>
+          </tr>
+          <tr>
+            <td class="label">DIRIGENTE</td><td class="value">${igreja.dirigente}</td>
+            <td class="label">TELEFONE</td><td class="value">${igreja.telefone}</td>
+          </tr>
+          <tr>
+            <td class="label">ENDEREÇO</td><td colspan="3" class="value">${igreja.endereco}</td>
+          </tr>
+        </table>
+
+        <div class="section-title">PATRIMÔNIOS CADASTRADOS</div>
+        <table class="patrimonio-table">
+          <thead>
+            <tr>
+              <th>PATRIMÔNIO</th>
+              <th>POSSUI?</th>
+              <th>QUANTIDADE</th>
+              <th>CONSERVAÇÃO</th>
+              <th>OBSERVAÇÃO</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tabelaHtml}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          RELATÓRIO GERADO AUTOMATICAMENTE EM ${dataHora}
+        </div>
+      </body>
+    </html>
+  `;
 }
 
 function criarAbaTemporariaRelatorio(planilha, totvs) {

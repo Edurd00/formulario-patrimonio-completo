@@ -468,6 +468,48 @@ button:hover {
   margin-top: 18px !important;
 }
 
+.tabela-igrejas {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 14px;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.tabela-igrejas th {
+  background: #24348c;
+  color: white;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.tabela-igrejas td {
+  padding: 12px;
+  border-bottom: 1px solid #edf2f7;
+  color: #4a5568;
+}
+
+.tabela-igrejas tr:last-child td {
+  border-bottom: none;
+}
+
+.tabela-igrejas tr:hover {
+  background-color: #f8fafc;
+}
+
+.btn-tabela-pdf {
+  padding: 8px 12px;
+  font-size: 13px;
+  width: auto;
+  background: #0f766e;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .relatorio-botoes {
     flex-direction: column;

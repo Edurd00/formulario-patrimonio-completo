@@ -27,11 +27,17 @@
             <input type="text" id="totvsRelatorio" maxlength="5" placeholder="Ex: 12345" autofocus>
 
             <div class="botoes relatorio-botoes">
-                <button type="button" id="btn-gerar-relatorio">Criar Aba Temporária</button>
                 <button type="button" id="btn-exportar-pdf" class="botao-secundario">Exportar PDF</button>
             </div>
 
             <div id="mensagem-relatorio" class="mensagem-status" style="display: none;"></div>
+        </section>
+
+        <section class="card">
+            <h2>Igrejas Cadastradas</h2>
+            <div id="tabela-igrejas-container" style="overflow-x: auto; margin-top: 20px;">
+                <p>Carregando lista de igrejas...</p>
+            </div>
         </section>
 
         <footer class="footer">
