@@ -410,17 +410,41 @@ document.getElementById("formularioPatrimonio").addEventListener("submit", async
       body: JSON.stringify(dadosFinais)
     });
 
-    const resultado = JSON.parse(await resposta.text());
+    const textoResposta = await resposta.text();
+    const resultado = JSON.parse(textoResposta);
 
-    if (resultado.sucesso) {
+    // Validação em dois níveis para normalizar o encapsulamento nativo do Apps Script
+    let cadastroComSucesso = false;
+    let mensagemRetorno = "Não foi possível concluir o cadastro.";
+
+    if (resultado) {
+      if (resultado.sucesso === true) {
+        cadastroComSucesso = true;
+        mensagemRetorno = resultado.mensagem || "Cadastro realizado!";
+
+        if (resultado.dados && resultado.dados.sucesso === false) {
+          cadastroComSucesso = false;
+          mensagemRetorno = resultado.dados.mensagem || mensagemRetorno;
+        }
+      } else if (resultado.dados && resultado.dados.sucesso === true) {
+        cadastroComSucesso = true;
+        mensagemRetorno = resultado.dados.mensagem || "Cadastro realizado!";
+      } else {
+        mensagemRetorno = resultado.mensagem || mensagemRetorno;
+      }
+    }
+
+    if (cadastroComSucesso) {
+      alert("✓ " + mensagemRetorno);
       sessionStorage.setItem("cadastroEnviado", "true");
-      exibirMensagem("Cadastro patrimonial enviado com sucesso para a planilha!", "sucesso");
+      exibirMensagem("Cadastro patrimonial enviado com sucesso!", "sucesso");
       botaoSubmit.innerText = "Enviado com Sucesso";
       limparRascunho();
       localStorage.clear();
       setTimeout(() => { window.location.href = "index.html"; }, 3500);
     } else {
-      exibirMensagem(resultado.mensagem || "Erro ao salvar na planilha.", "erro");
+      alert("⚠️ Falha no cadastro: " + mensagemRetorno);
+      exibirMensagem(mensagemRetorno, "erro");
       botaoSubmit.disabled = false;
       botaoSubmit.innerText = "Finalizar Cadastro";
     }

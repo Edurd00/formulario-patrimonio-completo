@@ -1,33 +1,37 @@
 function doGet(e) {
   try {
     inicializarBanco();
+    var parametros = (e && e.parameter) ? e.parameter : {};
+    var acao = "";
 
-    const parametros = e && e.parameter ? e.parameter : {};
-    const acao = normalizarTexto(parametros.acao || "").toLowerCase();
+    if (parametros.acao) {
+      acao = normalizarTexto(parametros.acao).toLowerCase().trim();
+    }
+
+    if (acao === "listar_igrejas" || acao === "listarigrejas") {
+      var dadosIgrejas = listarIgrejasBaseGeral();
+      return ContentService.createTextOutput(JSON.stringify({
+        sucesso: true,
+        mensagem: "Lista consolidada com sucesso.",
+        dados: dadosIgrejas
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (acao === "gerarrelatorio" || acao === "gerar_relatorio") {
-      const relatorio = gerarRelatorioPorTotvs(parametros.totvs);
+      var relatorio = gerarRelatorioPorTotvs(parametros.totvs);
       return HtmlService.createHtmlOutput(
         '<script>window.top.location.href="' + relatorio.url + '";</script>' +
         '<p>Relatorio gerado. <a href="' + relatorio.url + '" target="_top">Abrir relatorio</a></p>'
       );
     }
 
-    if (acao === "listar_igrejas" || acao === "listarigrejas") {
-      return respostaSucesso("Lista de igrejas recuperada com sucesso.", listarIgrejasBaseGeral());
-    }
-
     if (acao === "testarroteamento" || acao === "testar_roteamento") {
       return respostaSucesso("Roteamento consultado com sucesso.", diagnosticarRoteamento(parametros.regiao, parametros.regiaoChave));
     }
 
-    return respostaSucesso("Backend online.", {
-      app: CONFIG.APP_NAME,
-      rotas: ["cadastrar", "gerarRelatorio", "exportarPdf"]
-    });
+    return ContentService.createTextOutput(JSON.stringify({ sucesso: true, mensagem: "Acesso Direto Ativo" })).setMimeType(ContentService.MimeType.JSON);
   } catch (erro) {
-    registrarErro("doGet", erro);
-    return HtmlService.createHtmlOutput("Erro ao gerar relatorio: " + mensagemErro(erro));
+    return ContentService.createTextOutput(JSON.stringify({ sucesso: false, mensagem: erro.message })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 

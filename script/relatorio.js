@@ -101,19 +101,31 @@ btnExportarPdf.addEventListener("click", function () {
 const listaIgrejasContainer = document.getElementById("lista-igrejas-container");
 
 async function listarIgrejas() {
+  if (!listaIgrejasContainer) return;
+
+  listaIgrejasContainer.innerHTML = '<p style="text-align:center; color:#666; font-size:14px;">⏳ Carregando dados diretamente do Google Planilhas...</p>';
+
   try {
-    const resposta = await fetch(`${URL}?acao=listar_igrejas`);
+    const resposta = await fetch(`${URL}?acao=listar_igrejas&_t=${new Date().getTime()}`);
     const resultado = await resposta.json();
 
     if (!resultado.sucesso) {
-      listaIgrejasContainer.innerHTML = `<p class="erro">Erro ao carregar lista: ${resultado.mensagem}</p>`;
+      listaIgrejasContainer.innerHTML = `<p class="erro">Erro no Apps Script: ${resultado.mensagem}</p>`;
       return;
     }
 
-    const igrejas = resultado.dados || [];
+    // Mineração inteligente da lista profunda de igrejas (Consolidação Regional)
+    let igrejas = [];
+    if (resultado.dados) {
+      if (Array.isArray(resultado.dados)) {
+        igrejas = resultado.dados;
+      } else if (resultado.dados.dados && Array.isArray(resultado.dados.dados)) {
+        igrejas = resultado.dados.dados;
+      }
+    }
 
     if (igrejas.length === 0) {
-      listaIgrejasContainer.innerHTML = '<p class="aviso">Nenhuma igreja cadastrada encontrada.</p>';
+      listaIgrejasContainer.innerHTML = '<p class="aviso" style="text-align:center; color:#999;">Nenhum registro encontrado nas Planilhas Regionais.</p>';
       return;
     }
 
@@ -125,7 +137,7 @@ async function listarIgrejas() {
             <th>Região</th>
             <th>Estadual</th>
             <th>Dirigente</th>
-            <th>Ações</th>
+            <th style="text-align:center;">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -134,12 +146,12 @@ async function listarIgrejas() {
     igrejas.forEach(igreja => {
       html += `
         <tr>
-          <td><strong>${igreja.totvs}</strong></td>
-          <td>${igreja.regiao}</td>
-          <td>${igreja.estadual}</td>
-          <td>${igreja.dirigente}</td>
-          <td>
-            <button class="btn-tabela" onclick="gerarPdfTabela('${igreja.totvs}', this)">📄 Gerar PDF</button>
+          <td><strong>${igreja.totvs || '-'}</strong></td>
+          <td>${igreja.regiao || '-'}</td>
+          <td>${igreja.estadual || '-'}</td>
+          <td>${igreja.dirigente || '-'}</td>
+          <td style="text-align:center;">
+            <button class="btn-tabela" onclick="gerarPdfTabela('${igreja.totvs}', this)">📄 Exportar PDF</button>
           </td>
         </tr>
       `;
