@@ -94,3 +94,97 @@ btnGerarRelatorio.addEventListener("click", function () {
 btnExportarPdf.addEventListener("click", function () {
   executarAcaoRelatorio("exportarPdf", btnExportarPdf, "Exportando...");
 });
+
+/* =========================================
+   LISTAGEM DINÂMICA DE IGREJAS
+========================================= */
+const listaIgrejasContainer = document.getElementById("lista-igrejas-container");
+
+async function listarIgrejas() {
+  try {
+    const resposta = await fetch(`${URL}?acao=listar_igrejas`);
+    const resultado = await resposta.json();
+
+    if (!resultado.sucesso) {
+      listaIgrejasContainer.innerHTML = `<p class="erro">Erro ao carregar lista: ${resultado.mensagem}</p>`;
+      return;
+    }
+
+    const igrejas = resultado.dados || [];
+
+    if (igrejas.length === 0) {
+      listaIgrejasContainer.innerHTML = '<p class="aviso">Nenhuma igreja cadastrada encontrada.</p>';
+      return;
+    }
+
+    let html = `
+      <table class="tabela-dinamica">
+        <thead>
+          <tr>
+            <th>TOTVS</th>
+            <th>Região</th>
+            <th>Estadual</th>
+            <th>Dirigente</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    igrejas.forEach(igreja => {
+      html += `
+        <tr>
+          <td><strong>${igreja.totvs}</strong></td>
+          <td>${igreja.regiao}</td>
+          <td>${igreja.estadual}</td>
+          <td>${igreja.dirigente}</td>
+          <td>
+            <button class="btn-tabela" onclick="gerarPdfTabela('${igreja.totvs}', this)">📄 Gerar PDF</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    listaIgrejasContainer.innerHTML = html;
+
+  } catch (erro) {
+    listaIgrejasContainer.innerHTML = '<p class="erro">Erro de conexão ao buscar igrejas.</p>';
+    console.error(erro);
+  }
+}
+
+window.gerarPdfTabela = async function(totvs, botao) {
+    const textoOriginal = botao.innerText;
+    botao.disabled = true;
+    botao.innerText = "⏳...";
+
+    try {
+        const resposta = await fetch(URL, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+                acao: "exportarPdf",
+                totvs: totvs
+            })
+        });
+
+        const resultado = JSON.parse(await resposta.text());
+
+        if (resultado.sucesso && resultado.dados && resultado.dados.url) {
+            window.open(resultado.dados.url, "_blank");
+            exibirMensagemRelatorio(`PDF da igreja ${totvs} gerado com sucesso!`, "sucesso");
+        } else {
+            alert(resultado.mensagem || "Erro ao gerar PDF.");
+        }
+    } catch (erro) {
+        console.error(erro);
+        alert("Erro na conexão.");
+    } finally {
+        botao.disabled = false;
+        botao.innerText = textoOriginal;
+    }
+};
+
+document.addEventListener("DOMContentLoaded", listarIgrejas);

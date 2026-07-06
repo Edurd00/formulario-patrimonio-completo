@@ -239,7 +239,8 @@ function controlarCampos(cardInfo) {
       campos.style.display = "block";
       qtd.required = ativo;
       estado.required = ativo;
-    } else {
+      card.classList.remove("card-recolhido");
+    } else if (select.value === "Nao") {
       campos.style.display = "none";
       qtd.required = false;
       estado.required = false;
@@ -247,6 +248,12 @@ function controlarCampos(cardInfo) {
       estado.value = "";
       const obs = document.getElementById(cardInfo.obsId);
       if (obs) obs.value = "";
+      card.classList.add("card-recolhido");
+    } else {
+      campos.style.display = "none";
+      qtd.required = false;
+      estado.required = false;
+      card.classList.remove("card-recolhido");
     }
 
     avaliarConclusaoCard();
@@ -336,8 +343,9 @@ function controlarObrigatoriedadeCard(cardInfo) {
   const nome = cardInfo.nomeId ? document.getElementById(cardInfo.nomeId) : null;
   const campos = document.getElementById(cardInfo.camposId);
   const ativo = cardInfo.etapa === etapaAtual;
+  const card = document.getElementById(cardInfo.cardId);
 
-  if (!select || !qtd || !estado || !campos) return;
+  if (!select || !qtd || !estado || !campos || !card) return;
 
   select.required = ativo;
   if (nome) nome.required = ativo;
@@ -346,10 +354,17 @@ function controlarObrigatoriedadeCard(cardInfo) {
     campos.style.display = "block";
     qtd.required = ativo;
     estado.required = ativo;
+    card.classList.remove("card-recolhido");
+  } else if (select.value === "Nao") {
+    campos.style.display = "none";
+    qtd.required = false;
+    estado.required = false;
+    card.classList.add("card-recolhido");
   } else {
     campos.style.display = "none";
     qtd.required = false;
     estado.required = false;
+    card.classList.remove("card-recolhido");
   }
 }
 

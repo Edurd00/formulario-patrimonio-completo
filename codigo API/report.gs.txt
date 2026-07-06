@@ -22,31 +22,82 @@ function gerarRelatorioPorTotvs(totvs) {
   };
 }
 
-function exportarPdfRelatorio(totvs, removerAbaTemporaria) {
-  const relatorio = gerarRelatorioPorTotvs(totvs);
-  const planilha = SpreadsheetApp.openById(relatorio.planilhaId);
-  const aba = planilha.getSheetByName(relatorio.aba);
+function exportarPdfRelatorio(totvs) {
+  const chave = normalizarTexto(totvs);
+  const igreja = buscarIgrejaPorTotvs(chave);
+  const patrimonios = buscarPatrimoniosPorTotvs(chave, igreja.destino);
 
-  SpreadsheetApp.flush();
+  const htmlTemplate = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+          .header { text-align: center; background-color: #24348c; color: white; padding: 20px; border-radius: 8px; }
+          .section { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+          .section-title { font-weight: bold; color: #24348c; border-bottom: 2px solid #24348c; margin-bottom: 10px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background-color: #24348c; color: white; }
+          .zebra tr:nth-child(even) { background-color: #f2f2f2; }
+          .footer { margin-top: 30px; font-size: 10px; text-align: right; color: #777; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>PATRIMÔNIOS IPDA</h1>
+          <h2>RELATÓRIO CORPORATIVO</h2>
+        </div>
 
-  const url = montarUrlExportacaoPdf(planilha.getId(), aba.getSheetId());
-  const resposta = UrlFetchApp.fetch(url, {
-    headers: {
-      Authorization: "Bearer " + ScriptApp.getOAuthToken()
-    }
-  });
+        <div class="section">
+          <div class="section-title">DADOS DA IGREJA</div>
+          <p><strong>TOTVS:</strong> ${igreja.totvs} | <strong>DATA:</strong> ${formatarData(new Date())}</p>
+          <p><strong>REGIÃO:</strong> ${igreja.regiao} | <strong>ESTADUAL:</strong> ${igreja.estadual}</p>
+          <p><strong>DIRIGENTE:</strong> ${igreja.dirigente}</p>
+          <p><strong>ENDEREÇO:</strong> ${igreja.endereco}</p>
+        </div>
 
-  const nomeArquivo = "RELATORIO_PATRIMONIO_" + normalizarTexto(totvs) + ".pdf";
-  const pasta = obterPastaPdfRelatorio(relatorio.regiao);
-  const arquivo = pasta.createFile(resposta.getBlob().setName(nomeArquivo));
+        <div class="section">
+          <div class="section-title">PATRIMÔNIOS CADASTRADOS</div>
+          <table class="zebra">
+            <thead>
+              <tr>
+                <th>PATRIMÔNIO</th>
+                <th>POSSUI?</th>
+                <th>QTD</th>
+                <th>ESTADO</th>
+                <th>OBSERVAÇÃO</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${patrimonios.map(item => `
+                <tr>
+                  <td><strong>${item.patrimonio}</strong></td>
+                  <td>${item.possui}</td>
+                  <td>${item.quantidade}</td>
+                  <td>${item.conservacao}</td>
+                  <td>${item.observacao || "-"}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
 
-  if (removerAbaTemporaria) {
-    planilha.deleteSheet(aba);
-  }
+        <div class="footer">
+          Relatório gerado automaticamente em ${formatarDataHora(new Date())}
+        </div>
+      </body>
+    </html>
+  `;
+
+  const blob = HtmlService.createHtmlOutput(htmlTemplate).getAs('application/pdf');
+  const nomeArquivo = "RELATORIO_PATRIMONIO_" + chave + ".pdf";
+  const pasta = obterPastaPdfRelatorio(igreja.regiao);
+  const arquivo = pasta.createFile(blob.setName(nomeArquivo));
 
   return {
-    totvs: normalizarTexto(totvs),
-    regiao: relatorio.regiao,
+    totvs: chave,
+    regiao: igreja.regiao,
     arquivo: arquivo.getName(),
     url: arquivo.getUrl(),
     pasta: pasta.getName(),

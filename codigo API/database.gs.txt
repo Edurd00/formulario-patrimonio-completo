@@ -336,6 +336,52 @@ function formatarTabelasBanco() {
   });
 }
 
+function listarIgrejasBaseGeral() {
+  const destinos = obterDestinosConfigurados();
+  let todasIgrejas = [];
+
+  destinos.forEach(function(destino) {
+    if (!destinoTemPlanilhaConfigurada(destino)) return;
+
+    try {
+      const planilha = abrirPlanilhaDestino(destino);
+      const aba = planilha.getSheetByName(destino.base);
+
+      if (!aba || aba.getLastRow() < 2) return;
+
+      const valores = aba.getRange(2, 1, aba.getLastRow() - 1, 6).getValues();
+
+      const igrejas = valores.map(function(linha) {
+        return {
+          totvs: linha[0],
+          regiao: linha[1],
+          estadual: linha[2],
+          dirigente: linha[3],
+          telefone: linha[4],
+          endereco: linha[5]
+        };
+      });
+
+      todasIgrejas = todasIgrejas.concat(igrejas);
+    } catch (e) {
+      Logger.log("Erro ao listar igrejas do destino " + destino.chave + ": " + e);
+    }
+  });
+
+  // Remover duplicatas por TOTVS se houver
+  const uniqueIgrejas = [];
+  const totvsVistos = new Set();
+
+  todasIgrejas.forEach(function(igreja) {
+    if (!totvsVistos.has(igreja.totvs)) {
+      totvsVistos.add(igreja.totvs);
+      uniqueIgrejas.push(igreja);
+    }
+  });
+
+  return uniqueIgrejas;
+}
+
 function formatarTabelaBanco(aba, colunas) {
   const ultimaLinha = aba.getLastRow();
 

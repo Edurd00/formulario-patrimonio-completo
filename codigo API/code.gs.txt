@@ -13,6 +13,10 @@ function doGet(e) {
       );
     }
 
+    if (acao === "listar_igrejas" || acao === "listarigrejas") {
+      return respostaSucesso("Lista de igrejas recuperada com sucesso.", listarIgrejasBaseGeral());
+    }
+
     if (acao === "testarroteamento" || acao === "testar_roteamento") {
       return respostaSucesso("Roteamento consultado com sucesso.", diagnosticarRoteamento(parametros.regiao, parametros.regiaoChave));
     }
@@ -43,7 +47,7 @@ function doPost(e) {
     }
 
     if (acao === "exportarpdf" || acao === "exportar_pdf") {
-      return respostaSucesso("PDF exportado com sucesso.", exportarPdfRelatorio(payload.totvs, true));
+      return respostaSucesso("PDF exportado com sucesso.", exportarPdfRelatorio(payload.totvs));
     }
 
     if (acao === "testarroteamento" || acao === "testar_roteamento") {
