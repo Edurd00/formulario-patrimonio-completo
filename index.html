@@ -61,13 +61,16 @@
 
             <div class="card">
 
+                <label for="cep">CEP</label>
+                <input type="text" id="cep" placeholder="00000-000" maxlength="9" inputmode="numeric" required>
+
                 <label for="endereco">Endereço da Igreja</label>
                 <input type="text" id="endereco" placeholder="Rua, Número, Bairro - Cidade/SP" required>
 
 
                 <label for="totvs">Código TOTVS</label>
                 <p class="instrucao">O mesmo código usado nos relatórios financeiros</p>
-                <input type="text" id="totvs" maxlength="5" placeholder="Ex: 12345" required>
+                <input type="text" id="totvs" maxlength="5" placeholder="Ex: 12345" inputmode="numeric" required>
                 <small id="erro-totvs"></small>
             </div>
 

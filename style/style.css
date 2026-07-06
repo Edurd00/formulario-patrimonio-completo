@@ -383,6 +383,18 @@ button:hover {
   display: inline-block;
 }
 
+.card-recolhido {
+    padding-bottom: 15px !important;
+    opacity: 0.8;
+}
+
+.card-recolhido label,
+.card-recolhido .campo-extra,
+.card-recolhido .descricao-campo,
+.card-recolhido .btn-remover-card {
+    display: none !important;
+}
+
 /* ==========================================================================
    6. CARD DE RESUMO, BOTÃO TOPO E MENSACHENS DE STATUS
    ========================================================================== */
@@ -522,3 +534,43 @@ button:hover {
   text-decoration: underline;
 }
 
+/* Estilos para a Tabela de Relatórios */
+.tabela-container {
+    overflow-x: auto;
+    margin-top: 15px;
+}
+
+.tabela-dinamica {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.tabela-dinamica th, .tabela-dinamica td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eef2f5;
+}
+
+.tabela-dinamica th {
+    background-color: #f8fafc;
+    color: #24348c;
+    font-weight: 600;
+}
+
+.tabela-dinamica tr:hover {
+    background-color: #f9fbfd;
+}
+
+.btn-tabela {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    width: auto;
+}
+
+.carregando {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
