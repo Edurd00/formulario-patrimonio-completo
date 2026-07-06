@@ -383,6 +383,15 @@ button:hover {
   display: inline-block;
 }
 
+.card-recolhido {
+  opacity: 0.5;
+  transform: scale(0.98);
+  transition: all 0.4s ease;
+  filter: grayscale(1);
+  max-height: 100px;
+  overflow: hidden;
+}
+
 /* ==========================================================================
    6. CARD DE RESUMO, BOTÃO TOPO E MENSACHENS DE STATUS
    ========================================================================== */

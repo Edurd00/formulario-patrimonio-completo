@@ -223,10 +223,13 @@ function controlarCampos(cardInfo) {
     const nomeOk = !nome || nome.value.trim() !== "";
     if (select.value === "Nao") {
       card.classList.add("card-concluido");
+      card.classList.add("card-recolhido");
     } else if (select.value === "Sim" && qtd.value.trim() !== "" && estado.value !== "" && nomeOk) {
       card.classList.add("card-concluido");
+      card.classList.remove("card-recolhido");
     } else {
       card.classList.remove("card-concluido");
+      card.classList.remove("card-recolhido");
     }
   }
 

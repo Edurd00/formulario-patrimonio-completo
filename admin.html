@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Patrimônios IPDA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style/style.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .filtro-card {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+        }
+        .filtro-card .campo {
+            flex: 1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        th, td {
+            text-align: left;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #24348c;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .paginacao {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .paginacao button {
+            width: auto;
+            padding: 8px 15px;
+        }
+        .btn-acao {
+            padding: 5px 10px;
+            font-size: 12px;
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h1>Painel de Controle</h1>
+        <p class="subtitulo">Gerenciamento de cadastros e patrimônios</p>
+
+        <div class="card filtro-card">
+            <div class="campo">
+                <label for="filtro-regiao">Região</label>
+                <select id="filtro-regiao">
+                    <option value="">Todas as Regiões</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="filtro-totvs">Código TOTVS</label>
+                <input type="text" id="filtro-totvs" placeholder="Ex: 12345">
+            </div>
+            <button id="btn-filtrar" style="width: auto; padding: 0 30px; height: 45px;">Filtrar</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>TOTVS</th>
+                    <th>Região</th>
+                    <th>Estadual</th>
+                    <th>Dirigente</th>
+                    <th>Data</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-igrejas">
+                <!-- Dados via JS -->
+            </tbody>
+        </table>
+
+        <div class="paginacao" id="paginacao">
+            <!-- Botões via JS -->
+        </div>
+    </div>
+
+    <script src="script/admin.js"></script>
+</body>
+</html>
