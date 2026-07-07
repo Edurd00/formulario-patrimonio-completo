@@ -1,7 +1,7 @@
 /* =========================================
    GOOGLE APPS SCRIPT URL
 ========================================= */
-const URL = "https://script.google.com/macros/s/AKfycbxUK5XcWW_BiUu5EBOMCuqaKgbIo7TSMhz4cH-lPo0i0D6G9Zwrd8v4ZpSLNQmmp4jYtw/exec";
+const URL = "https://script.google.com/macros/s//exec";
 
 /* =========================================
    REGIÕES DO PROJETO (espelhando script.js)
