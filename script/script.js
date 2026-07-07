@@ -8,7 +8,7 @@ const telefoneInput = document.getElementById("telefone");
 const totvs = document.getElementById("totvs");
 const erroTotvs = document.getElementById("erro-totvs");
 
-const URL = "https://script.google.com/macros/s/AKfycbxkNg6kiPzv1YdfkenT6n-XX5kFx1ts0R18Uu-xAY8I9_v4f7fqPKb-B3GmBb09jAOTqg/exec";
+const URL = "https://script.google.com/macros/s//exec";
 const codigosExistentes = [];
 
 async function carregarCodigosExistentes() {
